@@ -8,6 +8,7 @@
 #     https://doc.scrapy.org/en/latest/topics/settings.html
 #     https://doc.scrapy.org/en/latest/topics/downloader-middleware.html
 #     https://doc.scrapy.org/en/latest/topics/spider-middleware.html
+import random
 
 BOT_NAME = 'qunar'
 
@@ -23,7 +24,7 @@ ROBOTSTXT_OBEY = False
 
 # Configure maximum concurrent requests perf
 # ormed by Scrapy (default: 16)
-#CONCURRENT_REQUESTS = 32
+CONCURRENT_REQUESTS = 1
 
 # Configure a delay for requests for the same website (default: 0)
 # See https://doc.scrapy.org/en/latest/topics/settings.html#download-delay
@@ -93,4 +94,6 @@ ITEM_PIPELINES = {
 #HTTPCACHE_STORAGE = 'scrapy.extensions.httpcache.FilesystemCacheStorage'
 
 
-DOWNLOAD_TIMEOUT = 3
+# DOWNLOAD_TIMEOUT = 3
+DOWNLOAD_DELAY = random.uniform(8,15)
+LOG_LEVEL = 'WARNING'

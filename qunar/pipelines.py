@@ -10,7 +10,7 @@ from pprint import pprint
 
 class QunarPipeline(object):
     def __init__(self):
-        self.conn = pymssql.connect(host='192.168.2.135\sql2008', user='sa', password='sa', database='HotelSpider')
+        self.conn = pymssql.connect(host='119.145.8.188:16433', user='sa', password='Ecaim6688', database='HotelSpider')
         self.cur = self.conn.cursor()
 
     def close_spider(self,spider):
@@ -24,27 +24,27 @@ class QunarPipeline(object):
         # 清洗电话
         item["phone"] = item["phone"][0] if item["phone"] != [] else ''
         # 清洗可入住人数
-        item["Roomtype"]["people"] = item["Rdesc"][-2] if item["Rdesc"] != '' and type(int(item["Rdesc"][-2])) == int else 2
+        # item["Roomtype"]["people"] = item["Rdesc"][-2] if item["Rdesc"] != '' and type(int(item["Rdesc"][-2])) == int else 2
         # 清洗经纬度
         item["Latitude"] = item["street"].split(",")[0] if len(item["street"].split(",")) == 2 else ''
         item["Longitude"] = item["street"].split(",")[1] if len(item["street"].split(",")) == 2 else ''
         # 清洗有无窗户
-        if item["Roomtype"]["window"] == "有窗":
-            item["Roomtype"]["window"] = 1
-        elif item["Roomtype"]["window"] == "无窗":
-            item["Roomtype"]["window"] = 0
-        elif item["Roomtype"]["window"] == '':
-            item["Roomtype"]["window"] = 1
-        else:
-            item["Roomtype"]["window"] = 1
+        # if item["Roomtype"]["window"] == "有窗":
+        #     item["Roomtype"]["window"] = 1
+        # elif item["Roomtype"]["window"] == "无窗":
+        #     item["Roomtype"]["window"] = 0
+        # elif item["Roomtype"]["window"] == '':
+        #     item["Roomtype"]["window"] = 1
+        # else:
+        #     item["Roomtype"]["window"] = 1
         
 
         # insert 酒店表
-        # self.insert_hotels(item)
+        self.insert_hotels(item)
         # insert 房间表
         # self.insert_rooms(item)
         # insert 图片表
-        self.insert_images(item)
+        # self.insert_images(item)
         # insert 价格表
         # self.insert_price(item)
         # pprint(item)
@@ -60,10 +60,11 @@ class QunarPipeline(object):
         )
         try:
             self.cur.execute(insert)
-            print("插入成功Hotel")
+            # print("插入成功Hotel")
         except Exception as e:
-            print("插入失败Hotel")
-            print(e)
+            # print("插入失败Hotel")
+            # print(e)
+            pass
         self.conn.commit()
 
     def insert_rooms(self,item):

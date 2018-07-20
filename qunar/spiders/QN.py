@@ -4,6 +4,9 @@ import json
 from copy import deepcopy
 
 import datetime
+from time import sleep
+from urllib import parse
+
 from lxml import etree
 from pprint import pprint
 
@@ -24,14 +27,14 @@ class QnSpider(scrapy.Spider):
     start_urls = ['http://touch.qunar.com/hotel/']
     # 列表页
     # duibi = "http://touch.qunar.com/api/hotel/hotellist?checkInDate=2018-05-14&checkOutDate=2018-05-15&extra=%7B%7D&couponsSelected=-1&city=%E6%B7%B1%E5%9C%B3&page=2"
-    list_url = "http://touch.qunar.com/api/hotel/hotellist?checkInDate={}&checkOutDate={}&extra=%7B%22L%22%3A%22%22%2C%22DU%22%3A%22%22%2C%22MIN%22%3A0%2C%22MAX%22%3A0%7D&couponsSelected=-1&city=%E5%8C%97%E4%BA%AC&page={}"
+    list_url = "https://touch.qunar.com/api/hotel/hotellist?checkInDate={InDate}&checkOutDate={OutDate}&extra=%7B%22L%22%3A%22%22%2C%22DU%22%3A%22%22%2C%22MIN%22%3A0%2C%22MAX%22%3A0%7D&couponsSelected=-1&city={city}&page={page}&cityUrl={cityPY}"
     # 详情页电话
-    Ph_detail_url = "http://touch.qunar.com/hotel/hoteldetail?city=%E5%8C%97%E4%BA%AC&checkInDate={}&checkOutDate={}&seq={}&type=0&extra=&sort=0"
+    Ph_detail_url = "http://touch.qunar.com/hotel/hoteldetail?city=%e6%b7%b1%e5%9c%b3&checkInDate={}&checkOutDate={}&seq={}&type=0&extra=%7B%22L%22%3A%22%22%2C%22DU%22%3A%22%22%2C%22MIN%22%3A0%2C%22MAX%22%3A0%7D&sort=0"
     # 详情页房间
     # duibi =      "http://touch.qunar.com/api/hotel/hotelprice?seq=shenzhen_11052&checkInDate=2018-05-14&checkOutDate=2018-05-15&type=0&sleepTask=&productId=&fromSource=&reqReferer="
     detail_url = "http://touch.qunar.com/api/hotel/hotelprice?seq={}&checkInDate={}&checkOutDate={}&type=0&sleepTask=&productId=&fromSource=&reqReferer="
     # 当前页数
-    cur_page = 1
+    cur_page = 30
 
     def start_requests(self):
         now,tomorrw = process_urltime()
@@ -40,7 +43,7 @@ class QnSpider(scrapy.Spider):
         }
         yield scrapy.Request(
             headers=headers,
-            url=self.list_url.format(now,tomorrw,self.cur_page)
+            url=self.list_url.format(InDate = now,OutDate = tomorrw,city= parse.quote("深圳"),page=self.cur_page,cityPY="shenzhen")
 
         )
 
@@ -48,7 +51,9 @@ class QnSpider(scrapy.Spider):
         response_str = response.body.decode()
         response_json = json.loads(response_str)
         hotels = response_json["data"]["hotels"]
+        print(len(hotels))
         for hotel in hotels:
+            sleep(2)
             item = {}
             item["Source"] = "2"
             item["Hcity"] = hotel["cityName"]
@@ -57,6 +62,7 @@ class QnSpider(scrapy.Spider):
             item["status"] = hotel["status"]
             item["Score"] = hotel["attrs"]["CommentScore"]
             item["Hname"] = hotel["attrs"]["hotelName"]
+            print(item["HId"])
             item["street"] = hotel["attrs"]["gpoint"]
             item["Himage"] = hotel["attrs"]["imageID"]
             item["address"] = hotel["attrs"]["hotelAddress"]
@@ -70,14 +76,18 @@ class QnSpider(scrapy.Spider):
                 "User-Agent":"Mozilla/5.0 (iPhone; CPU iPhone OS 11_0 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A372 Safari/604.1"
             }
             # 获取当前时间和明天
-            now,tomorrw = process_urltime()
-            Ph_response_str = requests.get(self.Ph_detail_url.format(now,tomorrw,item["HId"]),headers=headers1)
-            Ph_response_html = etree.HTML(Ph_response_str.content.decode())
-            item["KYdate"] = Ph_response_html.xpath(".//div[@class='text-overflow qt-lh']//span[1]/text()")
-            item["phone"] = Ph_response_html.xpath(".//div[@class='text-overflow qt-lh']//span[2]/text()")
+            # now,tomorrw = process_urltime()
+            # Ph_response_str = requests.get(self.Ph_detail_url.format(now,tomorrw,item["HId"]),headers=headers1)
+            # Ph_response_html = etree.HTML(Ph_response_str.content.decode())
+            # item["KYdate"] = Ph_response_html.xpath(".//div[@class='text-overflow qt-lh']//span[1]/text()")
+            # item["phone"] = Ph_response_html.xpath(".//div[@class='text-overflow qt-lh']//span[2]/text()")
             # pprint(item)
+            item["KYdate"] = []
+            item["phone"] = []
             headers2 = {
                 "Referer":self.Ph_detail_url.format(now,tomorrw,item["HId"]),
+                "Host":"touch.qunar.com",
+                "Upgrade-Insecure-Requests":"1"
             }
             yield scrapy.Request(
                 url = self.detail_url.format(item["HId"],now,tomorrw),
@@ -86,14 +96,23 @@ class QnSpider(scrapy.Spider):
                 callback=self.detail_parse
 
             )
+            sleep(3)
         # #翻页
         totalpage = response_json["data"]["totalPage"]
         print("当前第%s页" %self.cur_page)
-        if self.cur_page < totalpage:
+        print("总页数%s页" %totalpage)
+        headers3 = {
+            "Referer":"https://touch.qunar.com/hotel/hotellist?city=%E6%B7%B1%E5%9C%B3&cityUrl=shenzhen&checkInDate=2018-07-17&checkOutDate=2018-07-18&extra=%7B%22L%22%3A%22%22%2C%22DU%22%3A%22%22%2C%22MIN%22%3A0%2C%22MAX%22%3A0%7D",
+            "pragma":"no-cache",
+            "user-agent":"Mozilla/5.0 (iPhone; CPU iPhone OS 11_0 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A372 Safari/604.1"
+        }
+        if self.cur_page < int(totalpage):
             now,tomorrw = process_urltime()
             yield scrapy.Request(
-                url = self.list_url.format(now,tomorrw,self.cur_page+1),
-                callback=self.parse
+                url=self.list_url.format(InDate=now, OutDate=tomorrw, city=parse.quote("深圳"), page=self.cur_page+1,
+                                         cityPY="shenzhen"),
+                callback=self.parse,
+                headers=headers3
             )
             self.cur_page = self.cur_page + 1
             print("*"*50)
@@ -105,40 +124,44 @@ class QnSpider(scrapy.Spider):
         # print(response)
         response_str = response.body.decode()
         response_json = json.loads(response_str)
-        rooms = response_json["data"]["rooms"]
-        for room in rooms:
-            item["Rname"] = room["name"]
-            item["Rprice"] = room["lowPrice"]
-            item["Rdesc"] = room["roomDesc"]
-            item["Rid"] = room["tag"]
-            item["Rbaseimage"] = room["images"][0]["url"] if room["images"] != [] else ''
-            item["Rimage"] = []
-            for image in room["images"]:
-                item["Rimage"].append(image["url"])
-            for Rtype in room["venders"]:
-                item["Roomtype"] = {}
-                item["Roomtype"]["room"] = Rtype["room"]
-                item["Roomtype"]["rule"] = Rtype["priceBasicInfoList"][0]["desc"] if Rtype["priceBasicInfoList"] != [] else ''
-                item["Roomtype"]["price"] = Rtype["price"]
-                # item["Roomtype"]["window"] = Rtype["rtDescInfo"][1]["窗"]
-                # item["Roomtype"]["area"] = Rtype["rtDescInfo"][3]["建筑面积"]
-                # item["Roomtype"]["floor"] = Rtype["rtDescInfo"][4]["楼层"]
-                # item["Roomtype"]["bed"] = Rtype["rtDescInfo"][5]["床型"]
-                item["Roomtype"]["window"] = ''
-                item["Roomtype"]["area"] = ''
-                item["Roomtype"]["floor"] = ''
-                item["Roomtype"]["bed"] = ''
-                if Rtype["rtDescInfo"] != []:
-                    for faci in Rtype["rtDescInfo"]:
-                        if "窗" in faci:
-                            item["Roomtype"]["window"] = faci["窗"]
-                        if "建筑面积" in faci:
-                            item["Roomtype"]["area"] = faci["建筑面积"]
-                        if "楼层" in faci:
-                            item["Roomtype"]["floor"] = faci["楼层"]
-                        if "床型" in faci:
-                            item["Roomtype"]["bed"] = faci["床型"]
-                item["Roomtype"]["Pid"] = Rtype["seq"]
-                item["Roomtype"]["breakfast"] = Rtype["roomRtInfo"][0]["tag"] if Rtype["roomRtInfo"] != [] else ''
-                # print(item)
-                yield deepcopy(item)
+        try:
+            rooms = response_json["data"]["rooms"]
+        except Exception as e:
+            yield deepcopy(item)
+        else:
+            for room in rooms:
+                item["Rname"] = room["name"]
+                item["Rprice"] = room["lowPrice"]
+                item["Rdesc"] = room["roomDesc"]
+                item["Rid"] = room["tag"]
+                item["Rbaseimage"] = room["images"][0]["url"] if room["images"] != [] else ''
+                item["Rimage"] = []
+                for image in room["images"]:
+                    item["Rimage"].append(image["url"])
+                for Rtype in room["venders"]:
+                    item["Roomtype"] = {}
+                    item["Roomtype"]["room"] = Rtype["room"]
+                    item["Roomtype"]["rule"] = Rtype["priceBasicInfoList"][0]["desc"] if Rtype["priceBasicInfoList"] != [] else ''
+                    item["Roomtype"]["price"] = Rtype["price"]
+                    # item["Roomtype"]["window"] = Rtype["rtDescInfo"][1]["窗"]
+                    # item["Roomtype"]["area"] = Rtype["rtDescInfo"][3]["建筑面积"]
+                    # item["Roomtype"]["floor"] = Rtype["rtDescInfo"][4]["楼层"]
+                    # item["Roomtype"]["bed"] = Rtype["rtDescInfo"][5]["床型"]
+                    item["Roomtype"]["window"] = ''
+                    item["Roomtype"]["area"] = ''
+                    item["Roomtype"]["floor"] = ''
+                    item["Roomtype"]["bed"] = ''
+                    if Rtype["rtDescInfo"] != []:
+                        for faci in Rtype["rtDescInfo"]:
+                            if "窗" in faci:
+                                item["Roomtype"]["window"] = faci["窗"]
+                            if "建筑面积" in faci:
+                                item["Roomtype"]["area"] = faci["建筑面积"]
+                            if "楼层" in faci:
+                                item["Roomtype"]["floor"] = faci["楼层"]
+                            if "床型" in faci:
+                                item["Roomtype"]["bed"] = faci["床型"]
+                    item["Roomtype"]["Pid"] = Rtype["seq"]
+                    item["Roomtype"]["breakfast"] = Rtype["roomRtInfo"][0]["tag"] if Rtype["roomRtInfo"] != [] else ''
+                    # print(item)
+                    yield deepcopy(item)
