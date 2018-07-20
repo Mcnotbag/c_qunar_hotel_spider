@@ -172,7 +172,7 @@ class QNspiders(object):
         return "".join([adl[-2:], adl[:-2], b2a_hex(bytes(byte_arry)).upper().decode()])
 
     def get_params_bc(self,id,city='shenzhen',cityname="null"):
-        now = datetime.date.today()
+        now = datetime.date.today() + datetime.timedelta(days=1)
         tomorrw = now + datetime.timedelta(days=1)
         b = self.get_body(
             self.b_str % {"city": city, "cityName": cityname, "star": "0", "beginDate": now,
@@ -184,7 +184,7 @@ class QNspiders(object):
 
     def request_list(self,city='shenzhen',pageToken='0'):
         randv = ''.join([str(random.randrange(10)) for i in range(15)])
-        now = datetime.date.today()
+        now = datetime.date.today() + datetime.timedelta(days=1)
         tomorrw = now + datetime.timedelta(days=1)
         response = requests.get(url=self.url.format(city=city,pageToken=pageToken,size="15",randv=randv,timestamp=self.T,beginDate=now,endDate=tomorrw),headers=self.headers)
         list_obj = json.loads(re.findall(b'\{.*\}', response.content)[0].replace(b"\'", b"\"").decode())
@@ -244,8 +244,10 @@ class QNspiders(object):
 
 
     def run(self):
-        page = 11
+        page = 48
         while True:
+            if page == 956:
+                break
             hotels = self.request_list(pageToken=page*15)
             print(page)
             for hotel in hotels:
@@ -293,7 +295,10 @@ class QNspiders(object):
                         item["room"]["area"] = room["area"]
                         item["room"]["floor"] = room["floor"]
                         item["room"]["bed"] = room["bedType"]
-                        item["room"]["cover"] = [i["url"] for i in room["images"]][0] if [i["url"] for i in room["images"]] != [] else ''
+                        if room["images"]:
+                            item["room"]["cover"] = [i["url"] for i in room["images"]][0] if [i["url"] for i in room["images"]] != [] else ''
+                        else:
+                            item["room"]["cover"] = ''
                         try:
                             item["room"]["window"] = room["window"]
                         except Exception as e:
