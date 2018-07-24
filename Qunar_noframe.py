@@ -244,7 +244,7 @@ class QNspiders(object):
 
 
     def run(self):
-        page = 48
+        page = 278
         while True:
             if page == 956:
                 break
@@ -260,8 +260,8 @@ class QNspiders(object):
                 item["Area"] = hotel["attrs"]["HotelArea"]
                 item["Hprice"] = hotel["price"]
                 item["Hpoint"] = hotel["attrs"]["bpoint"]
-                item["Latitude"] = item["Hpoint"].split(",")[:-1][0]
-                item["Longitude"] = item["Hpoint"].split(",")[1:][0]
+                item["Latitude"] = item["Hpoint"].split(",")[:-1][0] if item["Hpoint"].split(",")[:-1] != [] else 0
+                item["Longitude"] = item["Hpoint"].split(",")[1:][0] if item["Hpoint"].split(",")[1:] != [] else 0
                 item["Score"] = hotel["attrs"]["CommentScore"]
                 item["City"] = hotel["cityName"]
                 item["HId"] = hotel["id"]
@@ -275,7 +275,8 @@ class QNspiders(object):
                     try:
                         item["Phone"] = hotel_detail["data"]["dinfo"]["phone"]
                     except Exception as e:
-                        pprint(hotel_detail)
+                        item["Phone"] = ''
+                        # pprint(hotel_detail)
                     item["KYdate"] = hotel_detail["data"]["dinfo"]["whenOpen"] if "whenOpen" in hotel_detail["data"]["dinfo"] else ''
                     item["ZXdate"] = hotel_detail["data"]["dinfo"]["whenFitment"] if "whenFitment" in hotel_detail["data"]["dinfo"] else ''
                     item["Hurl"] = "http://hotel.qunar.com/city/{city}/dt-{id}/".format(city=item["HId"].split("_")[:-1][0],id=item["HId"].split("_")[1:][0])
@@ -295,9 +296,9 @@ class QNspiders(object):
                         item["room"]["area"] = room["area"]
                         item["room"]["floor"] = room["floor"]
                         item["room"]["bed"] = room["bedType"]
-                        if room["images"]:
+                        try:
                             item["room"]["cover"] = [i["url"] for i in room["images"]][0] if [i["url"] for i in room["images"]] != [] else ''
-                        else:
+                        except Exception as e:
                             item["room"]["cover"] = ''
                         try:
                             item["room"]["window"] = room["window"]
